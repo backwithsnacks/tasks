@@ -30,12 +30,19 @@
     </header>
 
     <section class="mascot-card" aria-live="polite">
-      <button class="mascot" id="mascot" type="button" aria-label="Tap the mascot"></button>
+      <button class="mascot" id="mascot" type="button" aria-label="Tap the mascot">
+        <span class="face" id="mascotFace"></span>
+        <span class="badge" id="mascotBadge" aria-hidden="true"></span>
+        <span class="zzz" id="mascotZzz" aria-hidden="true" hidden>💤</span>
+      </button>
       <div class="bubble">
         <p class="mascot-name" id="mascotName"></p>
         <p class="mascot-line" id="mascotLine"></p>
-        <div class="bar" aria-hidden="true"><span id="barFill"></span></div>
+        <div class="pet-stats"><span id="petHearts"></span><span id="petXp"></span></div>
+        <div class="bar xp" aria-hidden="true" title="Level progress"><span id="xpFill"></span></div>
+        <div class="bar" aria-hidden="true" title="Today's progress"><span id="barFill"></span></div>
       </div>
+      <div class="confetti" id="confetti" aria-hidden="true"></div>
     </section>
 
     <form class="add" id="addForm" autocomplete="off">
@@ -77,6 +84,9 @@
         <li><b>Daily</b> tasks untick themselves after 12 midnight.</li>
         <li>Tap <b>🔒</b> on a daily task to keep it as it is tonight. It skips one reset, then goes back to normal.</li>
         <li><b>🔥</b> is your streak: how many days in a row you finished that task.</li>
+        <li>Your mascot is like a little pet. Each ticked task gives it <b>XP</b> to level up and grow (Baby → Kid → Buddy → Hero → Legend). The <b>❤️</b> hearts are its happiness: missed daily tasks make it sad.</li>
+        <li>The mascot you pick becomes your <b>home screen icon</b>. Your phone can take up to a day to switch it.</li>
+        <li>Press and hold the app icon for quick “Add task” shortcuts.</li>
         <li><b>To-do</b> tasks stay until you tick them. Ticked ones get cleared away after midnight.</li>
         <li>Nothing ever leaves your phone. The app has no internet features at all.</li>
       </ul>

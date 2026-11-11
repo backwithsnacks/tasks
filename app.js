@@ -121,14 +121,40 @@
   };
 
   // ---------- State ----------
-  const fresh = () => ({ v: 1, lastDate: dayKey(), mascot: 'sprout', tasks: [] });
+  const freshPet = () => ({ xp: 0, happy: 70, bonusDay: '' });
+  const fresh = () => ({ v: 1, lastDate: dayKey(), mascot: 'sprout', tasks: [], pet: freshPet() });
 
   function load() {
     try {
       const s = JSON.parse(localStorage.getItem(KEY));
-      if (s && Array.isArray(s.tasks)) return { ...fresh(), ...s };
+      if (s && Array.isArray(s.tasks)) return { ...fresh(), ...s, pet: { ...freshPet(), ...(s.pet || {}) } };
     } catch (e) { /* fall through */ }
     return fresh();
+  }
+
+  // ---------- Pet life (levels + happiness) ----------
+  // Each level needs a bit more XP than the last: 50, 75, 100, 125…
+  const xpForLevel = (lvl) => 50 + (lvl - 1) * 25;
+  function levelInfo(xp) {
+    let lvl = 1, rest = xp;
+    while (rest >= xpForLevel(lvl)) { rest -= xpForLevel(lvl); lvl++; }
+    return { lvl, into: rest, need: xpForLevel(lvl) };
+  }
+  const STAGES = [
+    { min: 1, name: 'Baby', scale: 0.8 },
+    { min: 3, name: 'Kid', scale: 0.9 },
+    { min: 6, name: 'Buddy', scale: 1 },
+    { min: 10, name: 'Hero', scale: 1.08, badge: '✨' },
+    { min: 15, name: 'Legend', scale: 1.15, badge: '👑' }
+  ];
+  const stageFor = (lvl) => STAGES.filter((s) => lvl >= s.min).pop();
+  const clamp = (n) => Math.max(0, Math.min(100, n));
+
+  function addXp(n) {
+    const before = levelInfo(state.pet.xp).lvl;
+    state.pet.xp = Math.max(0, state.pet.xp + n);
+    const after = levelInfo(state.pet.xp).lvl;
+    if (after > before) levelUp(after);
   }
 
   let state = load();
@@ -149,6 +175,14 @@
     // Used by Fern the plant: droopy if any daily task was missed.
     const dailies = state.tasks.filter((t) => t.type === 'daily' && !t.keep);
     state.wilted = dailies.length > 0 && (gap > 1 || dailies.some((t) => !t.done));
+
+    // Pet happiness: missed daily tasks make the mascot sad, finishing them all cheers it up.
+    if (dailies.length) {
+      const missed = gap > 1 ? dailies.length : dailies.filter((t) => !t.done).length;
+      let change = missed === 0 ? 5 : -10 * missed;
+      if (gap > 1) change -= 15 * Math.min(gap - 1, 5); // days the app wasn't opened at all
+      state.pet.happy = clamp(state.pet.happy + change);
+    }
 
     state.tasks = state.tasks.filter((t) => {
       if (t.type === 'once') return !t.done; // ticked to-dos get cleared away
@@ -246,15 +280,35 @@
 
     const best = Math.max(0, ...state.tasks.filter((t) => t.type === 'daily').map((t) => (t.streak || 0) + (t.done ? 1 : 0)));
     const wilted = !!state.wilted && mood !== 'done';
-    $('mascot').textContent = (m.face && m.face(mood, { best, wilted })) || m.emoji;
-    $('mascotName').textContent = m.name;
+    const { lvl, into, need } = levelInfo(state.pet.xp);
+    const stage = stageFor(lvl);
+    const happy = state.pet.happy;
+    const hour = new Date().getHours();
+    const sleepy = hour >= 22 || hour < 6;
+
+    $('mascotFace').textContent = (m.face && m.face(mood, { best, wilted })) || m.emoji;
+    $('mascotFace').style.setProperty('--grow', stage.scale);
+    $('mascotBadge').textContent = stage.badge || '';
+    $('mascotZzz').hidden = !sleepy || mood === 'done';
+    const el = $('mascot');
+    el.classList.toggle('sad', happy < 30 && mood !== 'done');
+    el.classList.toggle('sleepy', sleepy && mood !== 'done');
+    el.classList.toggle('glow', mood === 'done');
+
+    $('mascotName').textContent = `${m.name} · Lv ${lvl} ${stage.name}`;
+    const hearts = Math.ceil(happy / 20);
+    $('petHearts').textContent = '❤️'.repeat(hearts) + '🤍'.repeat(5 - hearts);
+    $('petHearts').setAttribute('aria-label', `Happiness ${happy} out of 100`);
+    $('petXp').textContent = `${into}/${need} XP`;
+    $('xpFill').style.width = `${(into / need) * 100}%`;
     const lineKey = mood + (wilted ? '-wilt' : '');
     if (forceNew || lineKey !== lastMood || !lastLine) {
       lastLine = pick(wilted && m.wilt && mood !== 'empty' ? m.wilt : m[mood]);
-      if (mood === 'done' && lastMood && lastMood !== 'done') bounce();
+      if (mood === 'done' && lastMood && !lastMood.startsWith('done')) { bounce(); confetti(); }
     }
     lastMood = lineKey;
-    $('mascotLine').textContent = lastLine.replace('{left}', left);
+    const sadLine = happy < 30 && mood !== 'done' && mood !== 'empty' ? ' (I’m feeling a bit low… a task would cheer me up 🥺)' : '';
+    $('mascotLine').textContent = lastLine.replace('{left}', left) + sadLine;
     $('barFill').style.width = total ? `${(done / total) * 100}%` : '0';
   }
 
@@ -272,16 +326,59 @@
       const e = document.createElement('span'); e.className = 'emo'; e.textContent = m.emoji;
       const n = document.createElement('span'); n.className = 'nm'; n.textContent = m.name;
       b.append(e, n);
-      b.addEventListener('click', () => { state.mascot = id; save(); lastLine = ''; render(); bounce(); });
+      b.addEventListener('click', () => {
+        if (state.mascot === id) return;
+        state.mascot = id; save(); lastLine = ''; render(); bounce();
+        syncIcon();
+        toast(`${m.name} will become your app icon. Your phone may take up to a day to update it.`);
+      });
       box.append(b);
     }
   }
 
-  function bounce() {
+  function animate(cls) {
     const el = $('mascot');
-    el.classList.remove('bounce');
+    el.classList.remove('bounce', 'hop');
     void el.offsetWidth;
-    el.classList.add('bounce');
+    el.classList.add(cls);
+  }
+  const bounce = () => animate('bounce');
+  const hop = () => animate('hop');
+
+  // Little celebration burst. Purely visual, no sound.
+  function confetti() {
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const box = $('confetti');
+    const bits = ['🎉', '✨', '⭐', '💖', '🌟', '🎊'];
+    for (let i = 0; i < 22; i++) {
+      const s = document.createElement('span');
+      s.textContent = pick(bits);
+      s.style.left = Math.random() * 100 + '%';
+      s.style.setProperty('--dx', (Math.random() * 120 - 60) + 'px');
+      s.style.setProperty('--rot', (Math.random() * 720 - 360) + 'deg');
+      s.style.animationDelay = Math.random() * 0.3 + 's';
+      box.append(s);
+      setTimeout(() => s.remove(), 2200);
+    }
+  }
+
+  function levelUp(lvl) {
+    const m = MASCOTS[state.mascot] || MASCOTS.sprout;
+    const st = stageFor(lvl);
+    const grew = STAGES.some((s) => s.min === lvl);
+    setTimeout(() => {
+      confetti(); bounce();
+      toast(grew ? `${m.name} grew into a ${st.name}! (Level ${lvl}) 🎉` : `${m.name} reached level ${lvl}! 🎉`);
+    }, 250);
+  }
+
+  // Tells the offline helper (sw.js) which mascot to use for the home screen icon.
+  // This stays on the phone: it only picks which icon file the app points to.
+  function syncIcon() {
+    if (!('serviceWorker' in navigator)) return;
+    navigator.serviceWorker.ready.then((reg) => {
+      if (reg.active) reg.active.postMessage({ type: 'mascot', id: state.mascot });
+    }).catch(() => {});
   }
 
   function updateCountdown() {
@@ -309,8 +406,24 @@
 
   function toggle(id) {
     const t = find(id); if (!t) return;
+    const today = dayKey();
     t.done = !t.done;
+    // XP and happiness. Unticking takes them back, so tick/untick can't be used to farm XP.
+    if (t.done && t.xpOn !== today) {
+      t.xpOn = today;
+      state.pet.happy = clamp(state.pet.happy + 8);
+      addXp(10);
+    } else if (!t.done && t.xpOn === today) {
+      t.xpOn = '';
+      state.pet.happy = clamp(state.pet.happy - 8);
+      addXp(-10);
+    }
+    // Bonus for finishing everything, once a day.
+    const allDone = state.tasks.length > 0 && state.tasks.every((x) => x.done);
+    if (allDone && state.pet.bonusDay !== today) { state.pet.bonusDay = today; addXp(15); }
+    else if (!allDone && state.pet.bonusDay === today && !t.done) { state.pet.bonusDay = ''; addXp(-15); }
     save(); render();
+    if (t.done && !allDone) hop();
   }
 
   function toggleKeep(id) {
@@ -382,10 +495,13 @@
       state = {
         ...fresh(),
         mascot: MASCOTS[data.mascot] ? data.mascot : state.mascot,
+        pet: data.pet && Number.isFinite(data.pet.xp)
+          ? { xp: Math.max(0, data.pet.xp), happy: clamp(Number(data.pet.happy) || 70), bonusDay: String(data.pet.bonusDay || '') }
+          : state.pet,
         lastDate: /^\d{4}-\d{2}-\d{2}$/.test(data.lastDate) ? data.lastDate : dayKey(),
         tasks
       };
-      rollover(); save(); lastLine = ''; render();
+      rollover(); save(); lastLine = ''; render(); syncIcon();
       toast('Backup restored ✓');
     } catch (err) {
       toast('That file isn’t a Little Tasks backup.');
@@ -407,11 +523,23 @@
   rollover();
   render();
   updateCountdown();
+
+  // Long-press shortcuts on the home screen icon open the app with ?add=daily or ?add=once
+  const addKind = new URLSearchParams(location.search).get('add');
+  if (addKind === 'daily' || addKind === 'once') {
+    const radio = document.querySelector(`input[name="kind"][value="${addKind}"]`);
+    if (radio) radio.checked = true;
+    $('taskInput').focus();
+    history.replaceState(null, '', location.pathname);
+  }
+
+  // Re-render every few minutes too, so the sleepy look turns on/off at night.
+  setInterval(() => renderMascot(), 5 * 60000);
   setInterval(tick, 20000);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) tick(); });
 
   // Offline support: lets the app open with no internet.
   if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+    window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').then(syncIcon).catch(() => {}));
   }
 })();

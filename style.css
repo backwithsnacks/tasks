@@ -171,3 +171,40 @@ button { cursor: pointer; }
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }
 }
+
+/* ---------- Pet mascot ---------- */
+.mascot-card { position: relative; overflow: hidden; }
+.mascot { position: relative; overflow: visible; }
+.mascot .face {
+  display: inline-block; font-size: calc(2.6rem * var(--grow, 1)); line-height: 1;
+  animation: idle 3.2s ease-in-out infinite; transform-origin: 50% 90%;
+}
+@keyframes idle {
+  0%, 100% { transform: translateY(0) scale(1, 1); }
+  50% { transform: translateY(-3px) scale(1.03, 0.97); }
+}
+.mascot.sad .face { animation: droop 4s ease-in-out infinite; filter: saturate(0.6); }
+@keyframes droop { 0%, 100% { transform: rotate(-4deg) translateY(2px); } 50% { transform: rotate(4deg) translateY(3px); } }
+.mascot.sleepy .face { animation: snooze 4s ease-in-out infinite; }
+@keyframes snooze { 0%, 100% { transform: rotate(-6deg); } 50% { transform: rotate(-10deg) translateY(2px); } }
+.mascot.glow { box-shadow: 0 0 0 4px var(--good-soft), 0 0 22px var(--good); }
+.mascot.hop .face { animation: hopit 0.5s ease-out; }
+@keyframes hopit { 0% { transform: translateY(0) scale(1); } 35% { transform: translateY(-14px) scale(1.1, 0.9); } 70% { transform: translateY(0) scale(0.95, 1.05); } 100% { transform: none; } }
+.mascot .badge { position: absolute; top: -6px; right: -4px; font-size: 1.2rem; animation: twinkle 2s ease-in-out infinite; }
+.mascot .badge:empty { display: none; }
+@keyframes twinkle { 0%, 100% { transform: scale(1) rotate(0); } 50% { transform: scale(1.15) rotate(10deg); } }
+.mascot .zzz { position: absolute; top: -8px; right: -2px; font-size: 1rem; animation: float-z 2.4s ease-in-out infinite; }
+@keyframes float-z { 0% { transform: translate(0, 4px); opacity: 0; } 40% { opacity: 1; } 100% { transform: translate(8px, -14px); opacity: 0; } }
+.pet-stats { display: flex; justify-content: space-between; gap: 8px; font-size: 0.8rem; color: var(--muted); margin-bottom: 4px; font-variant-numeric: tabular-nums; }
+.pet-stats span:first-child { letter-spacing: 1px; font-size: 0.75rem; }
+.bar.xp { height: 5px; margin-bottom: 6px; }
+.bar.xp span { background: var(--keep); }
+.confetti { position: absolute; inset: 0; pointer-events: none; }
+.confetti span { position: absolute; top: -10%; font-size: 1.1rem; animation: fall 1.8s ease-in forwards; }
+@keyframes fall {
+  0% { transform: translate(0, 0) rotate(0); opacity: 1; }
+  100% { transform: translate(var(--dx), 190px) rotate(var(--rot)); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mascot .face, .mascot .badge, .mascot .zzz { animation: none !important; }
+}
