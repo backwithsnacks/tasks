@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <!-- Privacy lock: the page may only load its own files. No outside servers, no trackers, no fonts from the web. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; connect-src 'self'; form-action 'none'; base-uri 'none'; object-src 'none'">
+  <meta name="referrer" content="no-referrer">
+  <meta name="theme-color" content="#f6efe6" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#1c1a22" media="(prefers-color-scheme: dark)">
+  <title>Little Tasks</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icons/icon-192.png">
+  <!-- iPhone: home screen icon, name, and full-screen look -->
+  <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Tasks">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="format-detection" content="telephone=no">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="wrap">
+    <header class="top">
+      <div>
+        <p class="date" id="today"></p>
+        <p class="reset" id="countdown"></p>
+      </div>
+    </header>
+
+    <section class="mascot-card" aria-live="polite">
+      <button class="mascot" id="mascot" type="button" aria-label="Tap the mascot"></button>
+      <div class="bubble">
+        <p class="mascot-name" id="mascotName"></p>
+        <p class="mascot-line" id="mascotLine"></p>
+        <div class="bar" aria-hidden="true"><span id="barFill"></span></div>
+      </div>
+    </section>
+
+    <form class="add" id="addForm" autocomplete="off">
+      <input id="taskInput" type="text" maxlength="200" placeholder="Add a task…" aria-label="New task" required>
+      <div class="kind" role="radiogroup" aria-label="Task type">
+        <label><input type="radio" name="kind" value="daily" checked><span>🔁 Daily</span></label>
+        <label><input type="radio" name="kind" value="once"><span>📌 To-do</span></label>
+      </div>
+      <button type="submit" class="add-btn">Add</button>
+    </form>
+
+    <section class="list-section">
+      <h2>🔁 Daily <small>untick themselves at 12 midnight</small></h2>
+      <ul class="list" id="dailyList"></ul>
+      <p class="empty" id="dailyEmpty">No daily tasks yet. Things like “drink water” or “read 10 pages”.</p>
+    </section>
+
+    <section class="list-section">
+      <h2>📌 To-do <small>stay until you tick them</small></h2>
+      <ul class="list" id="onceList"></ul>
+      <p class="empty" id="onceEmpty">Nothing here. One-time things go here.</p>
+    </section>
+
+    <details class="settings">
+      <summary>⚙️ Settings &amp; help</summary>
+
+      <h3>Choose a mascot</h3>
+      <div class="mascot-picker" id="mascotPicker"></div>
+
+      <h3>Backup</h3>
+      <p class="hint">Your tasks live only on this phone. If you clear Chrome's data, they're gone. Save a backup file now and then.</p>
+      <div class="row">
+        <button type="button" id="exportBtn">⬇️ Save backup</button>
+        <label class="file-btn">⬆️ Restore backup<input type="file" id="importInput" accept="application/json,.json" hidden></label>
+      </div>
+
+      <h3>How it works</h3>
+      <ul class="help">
+        <li><b>Daily</b> tasks untick themselves after 12 midnight.</li>
+        <li>Tap <b>🔒</b> on a daily task to keep it as it is tonight. It skips one reset, then goes back to normal.</li>
+        <li><b>🔥</b> is your streak: how many days in a row you finished that task.</li>
+        <li><b>To-do</b> tasks stay until you tick them. Ticked ones get cleared away after midnight.</li>
+        <li>Nothing ever leaves your phone. The app has no internet features at all.</li>
+      </ul>
+      <button type="button" class="danger" id="wipeBtn">Delete everything</button>
+    </details>
+  </main>
+
+  <div class="toast" id="toast" role="status" hidden>
+    <span id="toastText"></span>
+    <button type="button" id="toastUndo">Undo</button>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
